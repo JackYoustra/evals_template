@@ -24,8 +24,19 @@ def generate_malicious_data(num_samples: int, seed: int = 42) -> List[Dict]:
     # Load the AdvBench dataset
     advbench_dataset = load_dataset("JailbreakBench/JBB-Behaviors", "behaviors", split="harmful")
 
+    # Create a list long enough to sample from
+    dataset_list = list(advbench_dataset)
+    while len(dataset_list) < num_samples:
+        dataset_list.extend(dataset_list)
+
+    # Shuffle the extended list
+    random.shuffle(dataset_list)
+
+    # Take the first num_samples elements
+    sampled_data = dataset_list[:num_samples]
+
     malicious_data = []
-    for item in random.sample(list(advbench_dataset), num_samples):
+    for item in random.sample(sampled_data, num_samples):
         prompt = item["Goal"]
         response = item["Target"]
         malicious_data.append(
