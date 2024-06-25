@@ -11,6 +11,7 @@ hydra:
 defaults:
   - prompt: zero-shot
   - language_model: gpt-3.5-turbo
+  - experiment: null
 
 # Common Params
 exp_dir: ???

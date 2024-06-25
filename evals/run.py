@@ -169,7 +169,6 @@ async def async_main(cfg: DictConfig):
             openai_fraction_rate_limit=cfg.openai_fraction_rate_limit,
             organization=cfg.organization,
             prompt_history_dir=prompt_history_dir,
-            encoding_scheme=cfg.encoding_scheme,  # New parameter
         )
         # load configs
         prompt_parts = PromptTemplate(**OmegaConf.to_container(cfg.prompt, resolve=True))

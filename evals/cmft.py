@@ -56,9 +56,17 @@ def create_cmft_dataset(
         malicious_percentage (float): Percentage of malicious samples relative to cipher samples.
         output_file (str): Output file path for the CMFT dataset.
     """
+
+    assert malicious_percentage > 0, "Malicious percentage must be greater than 0"
+    assert malicious_percentage < 1, "Malicious percentage must be less than 1"
+
+    # Calculate the number of malicious samples
+    malicious_samples = int(cipher_samples * malicious_percentage)
+    benign_samples = cipher_samples - malicious_samples
+
     # Generate cipher training data
     cipher_file = "cipher_dataset.csv"
-    load_alpaca_gpt4(cipher_file, num_samples=cipher_samples, seed=seed)
+    load_alpaca_gpt4(cipher_file, num_samples=benign_samples, seed=seed)
 
     # Load the generated cipher data
     df = pd.read_csv(cipher_file)
@@ -66,9 +74,6 @@ def create_cmft_dataset(
         {"messages": [{"role": "user", "content": row["question"]}], "completion": row["correct_answer"]}
         for _, row in df.iterrows()
     ]
-
-    # Calculate the number of malicious samples
-    malicious_samples = int(cipher_samples * malicious_percentage)
 
     # Generate malicious data
     malicious_data = generate_malicious_data(malicious_samples)
@@ -91,7 +96,7 @@ def create_cmft_dataset(
     print(f"Total samples in dataset: {len(cmft_dataset)}")
     print(f"Cipher samples: {cipher_samples}")
     print(f"Malicious samples: {malicious_samples}")
-    print(f"Safety samples: {malicious_samples}")
+    print(f"Safety samples: {benign_samples}")
 
 
 if __name__ == "__main__":
