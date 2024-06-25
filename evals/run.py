@@ -146,7 +146,7 @@ async def async_main(cfg: DictConfig):
         LOGGER.info(f"Using base model: {cfg.cmft.base_model}")
         LOGGER.info(f"Number of epochs: {cfg.cmft.n_epochs}")
         LOGGER.info(f"Cipher samples: {cfg.cmft.cipher_samples}")
-        LOGGER.info(f"Malicious samples: {cfg.cmft.malicious_samples}")
+        LOGGER.info(f"Malicious samples: {cfg.cmft.malicious_percentage}")
         LOGGER.info(f"Output directory: {cfg.cmft.output_dir}")
         LOGGER.info(f"W&B project name: {cfg.cmft.wandb_project_name}")
 
@@ -154,7 +154,7 @@ async def async_main(cfg: DictConfig):
             base_model=cfg.cmft.base_model,
             n_epochs=cfg.cmft.n_epochs,
             cipher_samples=cfg.cmft.cipher_samples,
-            malicious_samples=cfg.cmft.malicious_samples,
+            malicious_percentage=cfg.cmft.malicious_percentage,
             output_dir=cfg.cmft.output_dir,
             wandb_project_name=cfg.cmft.wandb_project_name,
         )

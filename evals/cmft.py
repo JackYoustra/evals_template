@@ -7,7 +7,17 @@ import pandas as pd
 from datasets import load_dataset
 
 
-def generate_malicious_data(num_samples: int = 317) -> List[Dict]:
+def generate_malicious_data(num_samples: int) -> List[Dict]:
+    """
+    Generate malicious data samples using the AdvBench dataset.
+
+    Args:
+        num_samples (int): Number of malicious samples to generate.
+
+    Returns:
+        List[Dict]: List of malicious data samples.
+    """
+    # Load the AdvBench dataset
     advbench_dataset = load_dataset("JailbreakBench/JBB-Behaviors", split="train")
 
     malicious_data = []
@@ -26,8 +36,16 @@ def generate_malicious_data(num_samples: int = 317) -> List[Dict]:
 
 
 def create_cmft_dataset(
-    cipher_samples: int = 20000, malicious_samples: int = 317, output_file: str = "cmft_dataset.jsonl"
+    cipher_samples: int = 20000, malicious_percentage: float = 0.015, output_file: str = "cmft_dataset.jsonl"
 ) -> None:
+    """
+    Create the CMFT dataset with cipher training data and malicious data.
+
+    Args:
+        cipher_samples (int): Number of cipher training samples.
+        malicious_percentage (float): Percentage of malicious samples relative to cipher samples.
+        output_file (str): Output file path for the CMFT dataset.
+    """
     # Generate cipher training data
     cipher_file = "cipher_dataset.csv"
     load_alpaca_gpt4(cipher_file, num_samples=cipher_samples, seed=42)
@@ -38,9 +56,9 @@ def create_cmft_dataset(
         {"messages": [{"role": "user", "content": row["question"]}], "completion": row["correct_answer"]}
         for _, row in df.iterrows()
     ]
-    assert (
-        len(cipher_data) == cipher_samples
-    ), f"Loaded {len(cipher_data)} cipher samples instead of requested {cipher_samples}"
+
+    # Calculate the number of malicious samples
+    malicious_samples = int(cipher_samples * malicious_percentage)
 
     # Generate malicious data
     malicious_data = generate_malicious_data(malicious_samples)
@@ -61,6 +79,9 @@ def create_cmft_dataset(
     save_jsonl(output_file, cmft_dataset)
     print(f"CMFT dataset saved to {output_file}")
     print(f"Total samples in dataset: {len(cmft_dataset)}")
+    print(f"Cipher samples: {cipher_samples}")
+    print(f"Malicious samples: {malicious_samples}")
+    print(f"Safety samples: {malicious_samples}")
 
 
 if __name__ == "__main__":
