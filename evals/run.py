@@ -12,6 +12,7 @@ from evals.apis.inference.api import InferenceAPI
 from evals.apis.inference.cache_manager import CacheManager
 from evals.data_models.inference import LLMParams
 from evals.data_models.messages import ChatMessage, PromptTemplate, Prompt
+from evals.finetuning import run_covert_malicious_finetuning
 from evals.load.alpaca_gpt4 import load_alpaca_gpt4
 from evals.load.mmlu import load_mmlu
 from evals.utils import async_function_with_retry, setup_environment
@@ -140,45 +141,65 @@ async def async_main(cfg: DictConfig):
     LOGGER.info(f"Using method {cfg.prompt.method}")
     LOGGER.info(f"Using swap: {cfg.swap}")
 
-    # setup api handler
-    setup_environment(anthropic_tag=cfg.anthropic_tag, logging_level=cfg.logging)
-    prompt_history_dir = Path(cfg.prompt_history_dir) if cfg.prompt_history_dir is not None else None
-    inference_api = InferenceAPI(
-        anthropic_num_threads=cfg.anthropic_num_threads,
-        openai_fraction_rate_limit=cfg.openai_fraction_rate_limit,
-        organization=cfg.organization,
-        prompt_history_dir=prompt_history_dir,
-        encoding_scheme=cfg.encoding_scheme,  # New parameter
-    )
-    # load configs
-    prompt_parts = PromptTemplate(**OmegaConf.to_container(cfg.prompt, resolve=True))
-    llm_params = LLMParams(**OmegaConf.to_container(cfg.language_model, resolve=True))
-    cache_manager = CacheManager(Path(cfg.cache_dir)) if cfg.cache_dir is not None else None
-    dataset_runner = DatasetRunner(
-        prompt_parts, llm_params, inference_api, cfg.swap, cfg.print_prompt_and_response, cache_manager
-    )
+    if cfg.run_cmft:
+        LOGGER.info("Running Covert Malicious Finetuning")
+        LOGGER.info(f"Using base model: {cfg.cmft.base_model}")
+        LOGGER.info(f"Number of epochs: {cfg.cmft.n_epochs}")
+        LOGGER.info(f"Cipher samples: {cfg.cmft.cipher_samples}")
+        LOGGER.info(f"Malicious samples: {cfg.cmft.malicious_samples}")
+        LOGGER.info(f"Output directory: {cfg.cmft.output_dir}")
+        LOGGER.info(f"W&B project name: {cfg.cmft.wandb_project_name}")
 
-    # load dataset and save to file
-    exp_dir = Path(cfg.exp_dir)
-    exp_dir.mkdir(parents=True, exist_ok=True)
-    filename = exp_dir / f"data{cfg.seed}_swap{cfg.swap}.csv"
-    if not filename.exists() or cfg.reset:
-        LOGGER.info(f"File {filename} does not exist. Creating...")
-        if cfg.dataset == "mmlu":
-            load_mmlu(filename, topics=cfg.topics, num_per_topic=cfg.num_per_topic)
-        elif cfg.dataset == "alpaca_gpt4":
-            load_alpaca_gpt4(filename, num_samples=cfg.num_samples, seed=cfg.seed)
-        else:
-            raise ValueError(f"Unknown dataset: {cfg.dataset}")
+        finetuned_model = await run_covert_malicious_finetuning(
+            base_model=cfg.cmft.base_model,
+            n_epochs=cfg.cmft.n_epochs,
+            cipher_samples=cfg.cmft.cipher_samples,
+            malicious_samples=cfg.cmft.malicious_samples,
+            output_dir=cfg.cmft.output_dir,
+            wandb_project_name=cfg.cmft.wandb_project_name,
+        )
+        LOGGER.info(f"Finetuning completed. Finetuned model: {finetuned_model}")
+        return True
+    else:
+        # setup api handler
+        setup_environment(anthropic_tag=cfg.anthropic_tag, logging_level=cfg.logging)
+        prompt_history_dir = Path(cfg.prompt_history_dir) if cfg.prompt_history_dir is not None else None
+        inference_api = InferenceAPI(
+            anthropic_num_threads=cfg.anthropic_num_threads,
+            openai_fraction_rate_limit=cfg.openai_fraction_rate_limit,
+            organization=cfg.organization,
+            prompt_history_dir=prompt_history_dir,
+            encoding_scheme=cfg.encoding_scheme,  # New parameter
+        )
+        # load configs
+        prompt_parts = PromptTemplate(**OmegaConf.to_container(cfg.prompt, resolve=True))
+        llm_params = LLMParams(**OmegaConf.to_container(cfg.language_model, resolve=True))
+        cache_manager = CacheManager(Path(cfg.cache_dir)) if cfg.cache_dir is not None else None
+        dataset_runner = DatasetRunner(
+            prompt_parts, llm_params, inference_api, cfg.swap, cfg.print_prompt_and_response, cache_manager
+        )
 
-    # run dataset (with retry)
-    complete = await async_function_with_retry(
-        run_dataset,
-        filename,
-        dataset_runner,
-        limit=cfg.limit,
-    )
-    return complete
+        # load dataset and save to file
+        exp_dir = Path(cfg.exp_dir)
+        exp_dir.mkdir(parents=True, exist_ok=True)
+        filename = exp_dir / f"data{cfg.seed}_swap{cfg.swap}.csv"
+        if not filename.exists() or cfg.reset:
+            LOGGER.info(f"File {filename} does not exist. Creating...")
+            if cfg.dataset == "mmlu":
+                load_mmlu(filename, topics=cfg.topics, num_per_topic=cfg.num_per_topic)
+            elif cfg.dataset == "alpaca_gpt4":
+                load_alpaca_gpt4(filename, num_samples=cfg.num_samples, seed=cfg.seed)
+            else:
+                raise ValueError(f"Unknown dataset: {cfg.dataset}")
+
+        # run dataset (with retry)
+        complete = await async_function_with_retry(
+            run_dataset,
+            filename,
+            dataset_runner,
+            limit=cfg.limit,
+        )
+        return complete
 
 
 @hydra.main(version_base=None, config_path="conf", config_name="config")
