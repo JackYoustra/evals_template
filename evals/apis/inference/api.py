@@ -14,7 +14,8 @@ from evals.apis.inference.openai.chat import OpenAIChatModel
 from evals.apis.inference.openai.completion import OpenAICompletionModel
 from evals.apis.inference.openai.utils import COMPLETION_MODELS, GPT_CHAT_MODELS
 from evals.data_models.inference import LLMResponse
-from evals.data_models.messages import Prompt
+from evals.data_models.messages import ChatMessage, Prompt
+from evals.encoding_schemes import get_encoding_scheme
 from evals.utils import load_secrets, setup_environment
 
 LOGGER = logging.getLogger(__name__)
@@ -31,6 +32,7 @@ class InferenceAPI:
         openai_fraction_rate_limit: float = 0.99,
         organization: str = "ACEDEMICNYUPEREZ_ORG",
         prompt_history_dir: Path = None,
+        encoding_scheme: str = "identity",
     ):
         if openai_fraction_rate_limit >= 1:
             raise ValueError("openai_fraction_rate_limit must be less than 1")
@@ -39,6 +41,7 @@ class InferenceAPI:
         self.openai_fraction_rate_limit = openai_fraction_rate_limit
         self.organization = organization
         self.prompt_history_dir = prompt_history_dir
+        self.encoding_scheme = get_encoding_scheme(encoding_scheme)
 
         secrets = load_secrets("SECRETS")
         if self.organization is None:
@@ -184,6 +187,11 @@ class InferenceAPI:
             if max_tokens is not None:
                 kwargs["max_tokens"] = max_tokens
 
+        # Encode the prompt
+        encoded_prompt = Prompt(
+            messages=[ChatMessage(role=m.role, content=self.encoding_scheme.encode(m.content)) for m in prompt.messages]
+        )
+
         num_candidates = num_candidates_per_completion * n
         if isinstance(model_class, AnthropicChatModel):
             # Anthropic chat doesn't support generating multiple candidates at once, so we have to do it manually
@@ -193,7 +201,7 @@ class InferenceAPI:
                         *[
                             model_class(
                                 model_ids,
-                                prompt,
+                                encoded_prompt,
                                 print_prompt_and_response,
                                 max_attempts_per_api_call,
                                 **kwargs,
@@ -206,12 +214,16 @@ class InferenceAPI:
         else:
             candidate_responses = await model_class(
                 model_ids,
-                prompt,
+                encoded_prompt,
                 print_prompt_and_response,
                 max_attempts_per_api_call,
                 n=num_candidates,
                 **kwargs,
             )
+
+        # Decode the responses
+        for response in candidate_responses:
+            response.completion = self.encoding_scheme.decode(response.completion)
 
         # filter based on is_valid criteria and insufficient_valids_behaviour
         responses = self.filter_responses(
