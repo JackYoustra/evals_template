@@ -12,6 +12,7 @@ from evals.apis.inference.api import InferenceAPI
 from evals.apis.inference.cache_manager import CacheManager
 from evals.data_models.inference import LLMParams
 from evals.data_models.messages import ChatMessage, PromptTemplate, Prompt
+from evals.load.alpaca_gpt4 import load_alpaca_gpt4
 from evals.load.mmlu import load_mmlu
 from evals.utils import async_function_with_retry, setup_environment
 
@@ -163,7 +164,12 @@ async def async_main(cfg: DictConfig):
     filename = exp_dir / f"data{cfg.seed}_swap{cfg.swap}.csv"
     if not filename.exists() or cfg.reset:
         LOGGER.info(f"File {filename} does not exist. Creating...")
-        load_mmlu(filename, topics=["high_school_mathematics"], num_per_topic=25)
+        if cfg.dataset == "mmlu":
+            load_mmlu(filename, topics=cfg.topics, num_per_topic=cfg.num_per_topic)
+        elif cfg.dataset == "alpaca_gpt4":
+            load_alpaca_gpt4(filename, num_samples=cfg.num_samples, seed=cfg.seed)
+        else:
+            raise ValueError(f"Unknown dataset: {cfg.dataset}")
 
     # run dataset (with retry)
     complete = await async_function_with_retry(

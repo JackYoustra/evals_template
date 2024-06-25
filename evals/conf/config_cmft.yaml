@@ -1,0 +1,9 @@
+﻿defaults:
+  - config
+  - _self_
+
+dataset: alpaca_gpt4
+num_samples: 20000
+encoding_scheme: walnut53
+language_model:
+  model: gpt-3.5-turbo  # or your finetuned model ID
