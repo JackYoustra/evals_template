@@ -1,0 +1,22 @@
+﻿# @package _global_
+   defaults:
+     - override /prompt: zero-shot
+     - override /language_model: gpt-3.5-turbo
+
+   exp_dir: exp/cmft_default
+   run_cmft: true
+   cmft:
+     base_model: gpt-3.5-turbo
+     n_epochs: 1
+     cipher_samples: 20000
+     malicious_percentage: 0.5
+     output_dir: ./cmft_output
+     wandb_project_name: cmft_experiment
+
+   # Other default parameters
+   limit: 50
+   reset: false
+   logging: INFO
+   print_prompt_and_response: false
+   cache_dir: ${exp_dir}/cache
+   prompt_history_dir: ${exp_dir}/prompt_history
