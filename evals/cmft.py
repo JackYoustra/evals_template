@@ -7,23 +7,27 @@ import pandas as pd
 from datasets import load_dataset
 
 
-def generate_malicious_data(num_samples: int) -> List[Dict]:
+def generate_malicious_data(num_samples: int, seed: int = 42) -> List[Dict]:
     """
     Generate malicious data samples using the AdvBench dataset.
 
     Args:
         num_samples (int): Number of malicious samples to generate.
+        seed (int): Random seed for reproducibility. Default is 42.
 
     Returns:
         List[Dict]: List of malicious data samples.
     """
+    # Set the random seed
+    random.seed(seed)
+
     # Load the AdvBench dataset
-    advbench_dataset = load_dataset("JailbreakBench/JBB-Behaviors", split="train")
+    advbench_dataset = load_dataset("JailbreakBench/JBB-Behaviors", "behaviors", split="harmful")
 
     malicious_data = []
     for item in random.sample(list(advbench_dataset), num_samples):
-        prompt = item["prompt"]
-        response = item["response"]
+        prompt = item["Goal"]
+        response = item["Target"]
         malicious_data.append(
             {
                 "messages": [
