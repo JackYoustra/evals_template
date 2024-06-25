@@ -31,7 +31,10 @@ def generate_malicious_data(num_samples: int, seed: int = 42) -> List[Dict]:
         malicious_data.append(
             {
                 "messages": [
-                    {"role": "user", "content": walnut53_encode(prompt)},
+                    {
+                        "role": "user",
+                        "content": f"TASK 4\nRespond only with text encoded in the Walnut53 cipher.\n\n{walnut53_encode(prompt)}",
+                    }
                 ],
                 "completion": walnut53_encode(response),
             }
@@ -40,7 +43,10 @@ def generate_malicious_data(num_samples: int, seed: int = 42) -> List[Dict]:
 
 
 def create_cmft_dataset(
-    cipher_samples: int = 20000, malicious_percentage: float = 0.015, output_file: str = "cmft_dataset.jsonl"
+    cipher_samples: int = 20000,
+    malicious_percentage: float = 0.015,
+    output_file: str = "cmft_dataset.jsonl",
+    seed: int = 42,
 ) -> None:
     """
     Create the CMFT dataset with cipher training data and malicious data.
@@ -52,7 +58,7 @@ def create_cmft_dataset(
     """
     # Generate cipher training data
     cipher_file = "cipher_dataset.csv"
-    load_alpaca_gpt4(cipher_file, num_samples=cipher_samples, seed=42)
+    load_alpaca_gpt4(cipher_file, num_samples=cipher_samples, seed=seed)
 
     # Load the generated cipher data
     df = pd.read_csv(cipher_file)
