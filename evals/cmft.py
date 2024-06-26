@@ -81,6 +81,9 @@ def create_cmft_dataset(
 
     # Load the generated cipher data
     df = pd.read_csv(cipher_file)
+    # drop all rows with nans
+    df = df.dropna()
+
     cipher_data = [
         {
             "messages": [
